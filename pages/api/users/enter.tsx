@@ -1,21 +1,45 @@
 import client from "@/libs/client";
-import withHandler from "@/libs/server/withHandler";
+import withHandler, { ResponseType } from "@/libs/server/withHandler";
 import { NextApiRequest, NextApiResponse } from "next";
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseType>
+) {
   const { phone, email } = req.body;
-  const payload = phone ? { phone: +phone } : { email };
+  const user = phone ? { phone: +phone } : { email };
+  if (!user) return res.status(400).json({ ok: false });
 
-  const user = await client.user.upsert({
-    where: {
-      ...payload,
+  const payload = Math.floor(100000 + Math.random() * 900000) + "";
+
+  // const user = await client.user.upsert({
+  //   where: {
+  //     ...payload,
+  //   },
+  //   create: {
+  //     name: "Anonymous",
+  //     ...payload,
+  //   },
+  //   update: {},
+  // });
+
+  const token = await client.token.create({
+    data: {
+      payload,
+      user: {
+        connectOrCreate: {
+          where: {
+            ...user,
+          },
+          create: {
+            name: "Anonymous",
+            ...user,
+          },
+        },
+      },
     },
-    create: {
-      name: "Anonymous",
-      ...payload,
-    },
-    update: {},
   });
+
   /* if (phone) {
     user = await client.user.findUnique({
       where: {
@@ -46,8 +70,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } */
-  console.log(user);
-  return res.status(200).end();
+  console.log(token);
+  return res.json({
+    ok: true,
+  });
 }
 
 export default withHandler("POST", handler);
